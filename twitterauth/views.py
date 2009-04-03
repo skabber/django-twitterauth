@@ -30,7 +30,7 @@ def start_auth(request, fail_redirect='/account/other_services/'):
         )
         return HttpResponseRedirect(fail_redirect)
 
-def twitter_oauth_reply(request):
+def get_credentials_from_request(request):
     token = OAuthToken(request.GET.get("oauth_token"), "")
     consumer = OAuthConsumer(settings.TWITTER_CONSUMER_KEY, settings.TWITTER_CONSUMER_SECRET)
     oauth_request = OAuthRequest().from_consumer_and_token(consumer, http_url=TWITTER_REQUEST_ACCESS_TOKEN_URL,
@@ -46,12 +46,7 @@ def twitter_oauth_reply(request):
         res = urllib.urlopen(verify_request.to_url())
         json_response = simplejson.loads(res.read())
         if json_response['screen_name']:
-            update_other_services(request.user,
-                twitter_oauth_key = accessToken.key,
-                twitter_oauth_secret = accessToken.secret,
-            )
-            request.user.message_set.create(message=ugettext(u"Successfully authenticated."))
-        else:
+            return accessToken
             request.user.message_set.create(
                 message=ugettext(u"Twitter authorization failed.")
             )
@@ -59,4 +54,11 @@ def twitter_oauth_reply(request):
         request.user.message_set.create(
             message=ugettext(u"Twitter authorization failed.")
         )
+
+# You will most likely want to implent this view yourself and do something with the 
+# credentials.  Like save them to the database.
+def twitter_oauth_reply(request):
+    accessToken = get_credentials_from_request(request)
+    request.session['twitter_oauth_key'] = accessToken.key
+    request.session['twitter_oauth_secret'] = accessToken.secret
     return HttpResponseRedirect(reverse("acct_other_services"))
